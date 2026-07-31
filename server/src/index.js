@@ -1,8 +1,10 @@
 import express from "express";
 import { createRequire } from "node:module";
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
+import { execFile } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createCanvas, registerFont } from "canvas";
 import { printJob } from "label-printer-core/print";
 import { loadProfile } from "label-printer-core/protocol";
 import { PrintQueue } from "./queue.js";
@@ -11,11 +13,34 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SERVER_ROOT = path.resolve(__dirname, "..");
 const TEMPLATES_DIR = path.join(SERVER_ROOT, "templates");
 const CONFIG_PATH = path.join(SERVER_ROOT, "config.json");
+const FONT_DIR = path.join(SERVER_ROOT, "fonts");
 const require = createRequire(import.meta.url);
 // Ruta a los perfiles del paquete: resolver "label-printer-core/protocol" (exportado)
 // y subir un nivel -> raíz del paquete -> printers/
 // (import.meta.resolve usa la condición "import" del exports; require.resolve es CJS y falla)
 const PKG_PRINTERS_DIR = path.join(path.dirname(fileURLToPath(import.meta.resolve("label-printer-core/protocol"))), "printers");
+
+// --- Fuentes de etiquetas (copia local en server/fonts) ---------------------
+// canvas v3 (Skia) en Windows no resuelve de forma fiable las fuentes del
+// paquete npm; registrarlas aquí con rutas absolutas garantiza el mismo
+// resultado en todas las plataformas. Mismo mapeo que fonts.mjs del core.
+const LABEL_FONTS = [
+  ["Norwester Condensed", "norwester.ttf", "normal"],
+  ["VT323", "VT323-Regular.ttf", "normal"],
+  ["Share Tech Mono", "ShareTechMono-Regular.ttf", "normal"],
+  ["Audiowide", "Audiowide-Regular.ttf", "normal"],
+  ["Rajdhani", "Rajdhani-Bold.ttf", "normal"],
+  ["Saira Stencil One", "SairaStencilOne-Regular.ttf", "normal"],
+  ["Stardos Stencil", "StardosStencil-Bold.ttf", "normal"],
+];
+for (const [family, file, weight] of LABEL_FONTS) {
+  try {
+    registerFont(path.join(FONT_DIR, file), { family, weight });
+    console.log(`[fonts] ${family} (${file})`);
+  } catch (e) {
+    console.warn(`[fonts] NO registrada ${family}: ${e.message}`);
+  }
+}
 
 const app = express();
 const queue = new PrintQueue();
@@ -62,6 +87,53 @@ function listProfiles() {
     });
 }
 
+// Verifica que cada fuente de etiqueta se aplica de verdad (si una fuente no
+// se resuelve, mide igual que sans-serif — el pitfall clásico de node-canvas).
+function fontStatus() {
+  const c = createCanvas(200, 40);
+  const ctx = c.getContext("2d");
+  const out = {};
+  for (const [family] of LABEL_FONTS) {
+    ctx.font = `28px "${family}"`;
+    const w = ctx.measureText("TEST").width;
+    ctx.font = "28px sans-serif";
+    const wSans = ctx.measureText("TEST").width;
+    out[family] = { loaded: Math.abs(w - wSans) > 1, width: Math.round(w) };
+  }
+  return out;
+}
+
+// Lista los dispositivos de impresión disponibles según la plataforma.
+function listDevices() {
+  return new Promise((resolve) => {
+    if (process.platform === "win32") {
+      // Puertos COM vía PowerShell (rápido y sin dependencias)
+      execFile(
+        "powershell",
+        ["-NoProfile", "-Command", "[System.IO.Ports.SerialPort]::GetPortNames()"],
+        { timeout: 8000, windowsHide: true },
+        (err, stdout) => {
+          const ports = stdout
+            ? stdout.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
+            : [];
+          resolve({ devices: [...new Set(ports)], platform: process.platform });
+        }
+      );
+    } else {
+      const candidates = [
+        "/dev/usb/lp0", "/dev/usb/lp1", "/dev/usb/lp2",
+        "/dev/ttyUSB0", "/dev/ttyUSB1",
+        "/dev/ttyACM0", "/dev/ttyACM1",
+      ];
+      resolve({ devices: candidates.filter((d) => existsSync(d)), platform: process.platform });
+    }
+  });
+}
+
+function currentDevice(cfg) {
+  return process.env.PRINTER_DEVICE ?? cfg.device ?? null;
+}
+
 // --- API ----------------------------------------------------------------------
 app.get("/api/health", (req, res) => {
   const cfg = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
@@ -77,6 +149,30 @@ app.get("/api/health", (req, res) => {
 
 app.get("/api/printers", (req, res) => {
   res.json(listProfiles());
+});
+
+app.get("/api/fonts", (req, res) => {
+  res.json(fontStatus());
+});
+
+app.get("/api/devices", async (req, res) => {
+  const { devices, platform } = await listDevices();
+  const cfg = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
+  res.json({ devices, current: currentDevice(cfg), platform });
+});
+
+app.post("/api/device", (req, res) => {
+  const { device } = req.body ?? {};
+  const value = typeof device === "string" ? device.trim() : "";
+  // Solo rutas de dispositivo reales: COMx (Windows) o /dev/... (Linux).
+  // Sin ".." ni caracteres raros: el valor se usa para abrir el dispositivo.
+  if (value !== "" && !/^(COM\d+|\/dev\/[A-Za-z0-9_/-]+)$/.test(value)) {
+    return res.status(400).json({ error: "Dispositivo inválido (usa p.ej. COM3, /dev/usb/lp0)" });
+  }
+  const cfg = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
+  cfg.device = value || null; // "" o null -> automático (default del perfil)
+  writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
+  res.json({ ok: true, device: cfg.device });
 });
 
 app.get("/api/templates", (req, res) => {

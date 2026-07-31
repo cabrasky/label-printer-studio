@@ -36,7 +36,18 @@ cd app
 npm run dev
 ```
 
-## 🏗️ Estructura
+### Windows
+
+- El server detecta los **puertos COM** disponibles (PowerShell) y la app los
+  muestra en **Ajustes → Dispositivo de impresión** para elegir (p.ej. `COM3`).
+  El dispositivo elegido se guarda en `server/config.json`.
+- Las fuentes de etiquetas viven en `server/fonts/` (copia del core) y el server
+  las registra con rutas absolutas al arrancar — **Ajustes → Fuentes** muestra
+  un punto verde por cada una que se aplica de verdad. Si alguna saliera en rojo
+  (motor de fuentes de node-canvas), instala los `.ttf` de `server/fonts/` en
+  Windows (clic derecho → Instalar) y reinicia el server.
+
+## 🖨️ Imprimir
 
 ```
 label-printer-studio/

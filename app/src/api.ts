@@ -41,6 +41,18 @@ export const api = {
     return req<PrinterProfile[]>("/api/printers");
   },
 
+  async fonts(): Promise<Record<string, { loaded: boolean; width: number }>> {
+    return req<Record<string, { loaded: boolean; width: number }>>("/api/fonts");
+  },
+
+  async devices(): Promise<{ devices: string[]; current: string | null; platform: string }> {
+    return req("/api/devices");
+  },
+
+  async setDevice(device: string): Promise<{ ok: boolean; device: string | null }> {
+    return req("/api/device", { method: "POST", body: JSON.stringify({ device }) });
+  },
+
   async templates(): Promise<TemplateSummary[]> {
     return req<TemplateSummary[]>("/api/templates");
   },

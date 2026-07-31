@@ -10,6 +10,7 @@
     "dev": "node --watch src/index.js"
   },
   "dependencies": {
+    "canvas": "^3.2.3",
     "express": "^4.21.2",
     "label-printer-core": "^1.1.0"
   }
