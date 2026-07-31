@@ -45,7 +45,7 @@ export const api = {
     return req<Record<string, { loaded: boolean; width: number }>>("/api/fonts");
   },
 
-  async devices(): Promise<{ devices: string[]; current: string | null; platform: string }> {
+  async devices(): Promise<{ devices: string[]; printers: string[]; current: string | null; platform: string }> {
     return req("/api/devices");
   },
 

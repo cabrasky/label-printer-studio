@@ -12,6 +12,7 @@ export function Settings() {
 
   // Dispositivo de impresión
   const [devices, setDevices] = useState<string[]>([]);
+  const [printers, setPrinters] = useState<string[]>([]);
   const [platform, setPlatform] = useState("");
   const [current, setCurrent] = useState<string | null>(null);
   const [deviceDraft, setDeviceDraft] = useState<string>("");
@@ -24,6 +25,7 @@ export function Settings() {
     try {
       const d = await api.devices();
       setDevices(d.devices);
+      setPrinters(d.printers);
       setPlatform(d.platform);
       setCurrent(d.current);
       setDeviceDraft(d.current ?? "");
@@ -126,8 +128,21 @@ export function Settings() {
               </div>
               <div className="field-hint">
                 Actual: <span className="mono">{current ?? "automático (default)"}</span>
-                {devices.length === 0 && " · ningún dispositivo detectado — comprueba cables/drivers"}
+                {devices.length === 0 && " · ningún puerto COM detectado"}
               </div>
+              {printers.length > 0 && (
+                <div className="field-hint">
+                  Impresoras instaladas en Windows:{" "}
+                  <span className="mono">{printers.join(", ")}</span> — si tu impresora USB no aparece
+                  como COM, instala el driver serie del fabricante y reinicia.
+                </div>
+              )}
+              {platform === "win32" && devices.length === 0 && printers.length === 0 && (
+                <div className="field-hint" style={{ color: "var(--warning)" }}>
+                  Sin puertos COM ni impresoras detectadas: comprueba que la impresora está enchufada
+                  y con driver (Administrador de dispositivos → Puertos COM y LPT).
+                </div>
+              )}
             </div>
             {deviceMsg && <div className={deviceMsg.kind === "ok" ? "ok-text" : "err-text"}>{deviceMsg.text}</div>}
           </div>

@@ -1,7 +1,7 @@
 import express from "express";
 import { createRequire } from "node:module";
-import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
-import { execFile } from "node:child_process";
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, copyFileSync } from "node:fs";
+import { execFile, execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createCanvas, registerFont } from "canvas";
@@ -41,6 +41,33 @@ for (const [family, file, weight] of LABEL_FONTS) {
     console.warn(`[fonts] NO registrada ${family}: ${e.message}`);
   }
 }
+
+// canvas v3 (Skia/DirectWrite) en Windows NO resuelve las fuentes registradas
+// con registerFont al renderizar (fallback a Sans). La solución fiable es
+// instalarlas como fuentes del sistema del usuario: se copian a
+// %LOCALAPPDATA%\Microsoft\Windows\Fonts y se registran en HKCU — sin
+// elevación. Al reiniciar el server, DirectWrite las resuelve por nombre.
+function ensureWindowsFonts() {
+  if (process.platform !== "win32") return;
+  const localAppData = process.env.LOCALAPPDATA;
+  if (!localAppData) return;
+  const fontsUserDir = path.join(localAppData, "Microsoft", "Windows", "Fonts");
+  const regKey = "HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts";
+  for (const [family, file] of LABEL_FONTS) {
+    try {
+      mkdirSync(fontsUserDir, { recursive: true });
+      copyFileSync(path.join(FONT_DIR, file), path.join(fontsUserDir, file));
+      execFileSync("reg", ["add", regKey, "/v", `${family} (TrueType)`, "/t", "REG_SZ", "/d", file, "/f"], {
+        windowsHide: true,
+        stdio: "ignore",
+      });
+      console.log(`[fonts] ${family} instalada como fuente de usuario (${file})`);
+    } catch (e) {
+      console.warn(`[fonts] no se pudo instalar ${family}: ${e.message}`);
+    }
+  }
+}
+ensureWindowsFonts();
 
 const app = express();
 const queue = new PrintQueue();
@@ -107,25 +134,29 @@ function fontStatus() {
 function listDevices() {
   return new Promise((resolve) => {
     if (process.platform === "win32") {
-      // Puertos COM vía PowerShell (rápido y sin dependencias)
-      execFile(
-        "powershell",
-        ["-NoProfile", "-Command", "[System.IO.Ports.SerialPort]::GetPortNames()"],
-        { timeout: 8000, windowsHide: true },
-        (err, stdout) => {
-          const ports = stdout
-            ? stdout.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
-            : [];
-          resolve({ devices: [...new Set(ports)], platform: process.platform });
+      // Puertos COM + impresoras instaladas vía PowerShell (rápido, sin deps)
+      const script =
+        "$ports = [System.IO.Ports.SerialPort]::GetPortNames(); " +
+        "$printers = Get-CimInstance Win32_Printer | Select-Object -ExpandProperty Name; " +
+        "Write-Output ('PORTS:' + ($ports -join ',')); " +
+        "Write-Output ('PRINTERS:' + ($printers -join ','))";
+      execFile("powershell", ["-NoProfile", "-Command", script], { timeout: 8000, windowsHide: true }, (err, stdout) => {
+        const ports = [];
+        const printers = [];
+        for (const line of (stdout ?? "").split(/\r?\n/)) {
+          const t = line.trim();
+          if (t.startsWith("PORTS:")) ports.push(...t.slice(6).split(",").filter(Boolean));
+          if (t.startsWith("PRINTERS:")) printers.push(...t.slice(9).split(",").filter(Boolean));
         }
-      );
+        resolve({ devices: [...new Set(ports)], printers: [...new Set(printers)], platform: process.platform });
+      });
     } else {
       const candidates = [
         "/dev/usb/lp0", "/dev/usb/lp1", "/dev/usb/lp2",
         "/dev/ttyUSB0", "/dev/ttyUSB1",
         "/dev/ttyACM0", "/dev/ttyACM1",
       ];
-      resolve({ devices: candidates.filter((d) => existsSync(d)), platform: process.platform });
+      resolve({ devices: candidates.filter((d) => existsSync(d)), printers: [], platform: process.platform });
     }
   });
 }
@@ -156,9 +187,9 @@ app.get("/api/fonts", (req, res) => {
 });
 
 app.get("/api/devices", async (req, res) => {
-  const { devices, platform } = await listDevices();
+  const { devices, printers, platform } = await listDevices();
   const cfg = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
-  res.json({ devices, current: currentDevice(cfg), platform });
+  res.json({ devices, printers, current: currentDevice(cfg), platform });
 });
 
 app.post("/api/device", (req, res) => {
