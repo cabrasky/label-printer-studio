@@ -1,0 +1,16 @@
+{
+  "name": "label-printer-studio-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "API server for label-printer-studio: renders templates and prints through label-printer-core",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "label-printer-core": "^1.1.0"
+  }
+}

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Label Printer Studio</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏷️</text></svg>" />
+    <style>
+      /* Fuentes de etiquetas: servidas por el server Express en /fonts
+         (copia de label-printer-core/fonts). El preview SVG del diseñador
+         usa los mismos nombres de familia que el renderer del core. */
+      @font-face { font-family: "Norwester Condensed"; src: url("/fonts/norwester.ttf") format("truetype"); font-weight: normal; }
+      @font-face { font-family: "VT323"; src: url("/fonts/VT323-Regular.ttf") format("truetype"); font-weight: normal; }
+      @font-face { font-family: "Share Tech Mono"; src: url("/fonts/ShareTechMono-Regular.ttf") format("truetype"); font-weight: normal; }
+      @font-face { font-family: "Audiowide"; src: url("/fonts/Audiowide-Regular.ttf") format("truetype"); font-weight: normal; }
+      @font-face { font-family: "Rajdhani"; src: url("/fonts/Rajdhani-Bold.ttf") format("truetype"); font-weight: normal; }
+      @font-face { font-family: "Saira Stencil One"; src: url("/fonts/SairaStencilOne-Regular.ttf") format("truetype"); font-weight: normal; }
+      @font-face { font-family: "Stardos Stencil"; src: url("/fonts/StardosStencil-Bold.ttf") format("truetype"); font-weight: normal; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

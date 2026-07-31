@@ -1,0 +1,47 @@
+{
+  "name": "envio",
+  "description": "Etiqueta de envio",
+  "dimensions": {
+    "width": 227,
+    "height": 136
+  },
+  "defaultFont": {
+    "family": "VT323",
+    "size": 24
+  },
+  "elements": [
+    {
+      "type": "text",
+      "content": "{{cliente}}",
+      "fontSize": 40,
+      "fontFamily": "VT323",
+      "position": {
+        "x": 113,
+        "y": 50
+      },
+      "align": "center"
+    },
+    {
+      "type": "text",
+      "content": "> caja {{caja}}/{{total}}",
+      "fontSize": 16,
+      "fontFamily": "VT323",
+      "position": {
+        "x": 113,
+        "y": 70
+      },
+      "align": "center"
+    },
+    {
+      "type": "rectangle",
+      "position": {
+        "x": 4,
+        "y": 4
+      },
+      "width": 219,
+      "height": 128,
+      "filled": false,
+      "lineWidth": 2
+    }
+  ]
+}

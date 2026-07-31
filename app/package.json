@@ -1,0 +1,29 @@
+{
+  "name": "label-printer-studio",
+  "private": true,
+  "version": "0.2.0",
+  "description": "Label Printer Studio — desktop/web app for designing and batch-printing thermal labels (Spotify-style UI). Electron + Vite + React + TypeScript.",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "desktop": "npm run build && electron ."
+  },
+  "dependencies": {
+    "papaparse": "^5.5.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/papaparse": "^5.5.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "electron": "^43.2.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.0"
+  }
+}
