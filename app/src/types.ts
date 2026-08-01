@@ -30,6 +30,10 @@ export interface LabelElement {
   cellWidth?: number;
   cellHeight?: number;
   alpha?: number;
+  /** Metadatos del editor (el core los ignora) */
+  locked?: boolean;
+  hidden?: boolean;
+  label?: string;
 }
 
 export interface LabelTemplate {

@@ -18,6 +18,13 @@ app.whenReady().then(async () => {
   await win.loadURL(URL);
   // Esperar a que carguen fuentes y render
   await new Promise((r) => setTimeout(r, 2500));
+  // Si se pide el diseñador, navegar (igual que haría el usuario)
+  if (process.env.SHOT_PAGE === "designer") {
+    await win.webContents.executeJavaScript(
+      `[...document.querySelectorAll('.nav-item')].find(b => b.textContent.trim() === 'Diseñador')?.click(); true`
+    );
+    await new Promise((r) => setTimeout(r, 1500));
+  }
   const img = await win.webContents.capturePage();
   fs.writeFileSync(OUT, img.toPNG());
   console.log(`screenshot → ${OUT} (${img.getSize().width}x${img.getSize().height})`);

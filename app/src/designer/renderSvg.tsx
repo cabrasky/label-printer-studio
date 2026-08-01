@@ -55,10 +55,11 @@ export function renderLabelSvg(tpl: LabelTemplate, opts: RenderOpts = {}): JSX.E
   const ink = tpl.background === "black" ? "#ffffff" : "#000000";
   const defaultFamily = tpl.defaultFont?.family ?? "Norwester Condensed";
   const defaultSize = tpl.defaultFont?.size ?? 16;
+  const visible = tpl.elements.filter((el) => !el.hidden);
 
   // Pass 1: auto-fit de texto (mismo criterio que render.mjs)
   const sizes = new Map<number, number>();
-  tpl.elements.forEach((el, i) => {
+  visible.forEach((el, i) => {
     if (el.type !== "text") return;
     const text = substitute(el.content ?? "", vars);
     const family = el.fontFamily ?? defaultFamily;
@@ -73,7 +74,7 @@ export function renderLabelSvg(tpl: LabelTemplate, opts: RenderOpts = {}): JSX.E
     );
   });
 
-  const elements = tpl.elements.map((el, i) =>
+  const elements = visible.map((el, i) =>
     renderElement(el, i, { ink, defaultFamily, defaultSize, dimW, dimH, sizes, selected: opts.selectedId === i, onSelect: opts.onSelect, vars })
   );
 
